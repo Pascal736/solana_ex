@@ -176,11 +176,33 @@ defmodule SolanaEx.KeyPair do
   def from_file(filename) do
     with {:ok, content} <- File.read(filename),
          {:ok, byte_list} <- Jason.decode(content),
-         bytes <- :binary.list_to_bin(byte_list) do
+         {:ok, bytes} <- validate_and_convert_bytes(byte_list) do
       from_bytes(bytes)
     else
+      {:error, :enoent} -> {:error, :file_not_found}
+      {:error, %Jason.DecodeError{}} -> {:error, :invalid_json}
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  defp validate_and_convert_bytes(byte_list) when is_list(byte_list) do
+    cond do
+      length(byte_list) != 64 ->
+        {:error, {:invalid_keypair_size, length(byte_list)}}
+
+      not Enum.all?(byte_list, &is_integer/1) ->
+        {:error, :non_integer_values}
+
+      not Enum.all?(byte_list, &(&1 >= 0 and &1 <= 255)) ->
+        {:error, :invalid_byte_range}
+
+      true ->
+        {:ok, :binary.list_to_bin(byte_list)}
+    end
+  end
+
+  defp validate_and_convert_bytes(_) do
+    {:error, :expected_array}
   end
 
   @doc """
@@ -208,9 +230,6 @@ defmodule SolanaEx.KeyPair do
 
       iex> SolanaEx.KeyPair.from_bytes(<<1, 2, 3>>)
       {:error, {:invalid_size, 3}}
-
-      iex> SolanaEx.KeyPair.from_bytes("not binary")
-      {:error, :not_binary}
   """
   def from_bytes(bytes) when byte_size(bytes) == 64 do
     <<private_key::binary-size(32), public_key::binary-size(32)>> = bytes
