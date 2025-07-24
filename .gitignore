@@ -24,3 +24,4 @@ solana_ex-*.tar
 
 # Generated keypairs during tests.
 test*.json
+invalid.json
