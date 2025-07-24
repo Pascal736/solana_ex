@@ -21,3 +21,6 @@ solana_ex-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+# Generated keypairs during tests.
+test*.json

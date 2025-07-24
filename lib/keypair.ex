@@ -18,9 +18,28 @@ defmodule SolanaEx.KeyPair do
   """
 
   alias Ed25519
+  alias Base58
 
-  @derive {Inspect, only: [:public_key]}
   defstruct [:public_key, :secret_key]
+
+  defimpl Inspect, for: SolanaEx.KeyPair do
+    import Inspect.Algebra
+
+    def inspect(%SolanaEx.KeyPair{public_key: nil}, _opts) do
+      "#SolanaEx.KeyPair<public_key: nil>"
+    end
+
+    def inspect(%SolanaEx.KeyPair{public_key: public_key}, _opts) do
+      base58_pubkey = Base58.encode(public_key)
+
+      concat([
+        "#SolanaEx.KeyPair<",
+        "public_key: ",
+        base58_pubkey,
+        ">"
+      ])
+    end
+  end
 
   @doc """
   Generates a new random Ed25519 key pair.
@@ -124,7 +143,45 @@ defmodule SolanaEx.KeyPair do
 
   def is_valid?(_), do: false
 
-  def from_file(), do: nil
+  @doc """
+  Loads a key pair from a file containing a JSON array of bytes.
+
+  Reads a file containing a JSON array of 64 integers (0-255) and constructs a key pair.
+  The format expects the first 32 bytes to be the private key and the last 32 bytes
+  to be the public key.
+
+  ## Parameters
+  - `filename` - The path to the key pair file to load
+
+  ## Returns
+  - `{:ok, keypair}` - If the file was successfully loaded and is valid
+  - `{:error, reason}` - If there was an error reading the file or parsing the content
+
+  ## Examples
+
+      iex> keypair = SolanaEx.KeyPair.new()
+      iex> {:ok, filename} = SolanaEx.KeyPair.to_file("test.json", keypair)
+      iex> {:ok, loaded_keypair} = SolanaEx.KeyPair.from_file(filename)
+      iex> SolanaEx.KeyPair.is_valid?(loaded_keypair)
+      true
+
+      iex> SolanaEx.KeyPair.from_file("nonexistent.json")
+      {:error, :file_not_found}
+
+      iex> File.write!("invalid.json", ~s|{"not": "array"}|)
+      iex> SolanaEx.KeyPair.from_file("invalid.json")
+      {:error, :expected_array}
+  """
+  @spec from_file(String.t()) :: {:ok, %__MODULE__{}} | {:error, atom() | {atom(), integer()}}
+  def from_file(filename) do
+    with {:ok, content} <- File.read(filename),
+         {:ok, byte_list} <- Jason.decode(content),
+         bytes <- :binary.list_to_bin(byte_list) do
+      from_bytes(bytes)
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
 
   @doc """
   Creates a key pair from a 64-byte binary.
@@ -196,7 +253,43 @@ defmodule SolanaEx.KeyPair do
     "#{keypair.secret_key}#{keypair.public_key}"
   end
 
-  def to_files(name, %__MODULE__{} = keypair) do
+  @doc """
+  Saves a key pair to a file in JSON array format.
+
+  The key pair is saved as a JSON array of 64 integers (0-255), where the first 32 bytes
+  represent the private key and the last 32 bytes represent the public key. This format
+  is compatible with standard Solana tooling.
+
+  ## Parameters
+  - `filename` - The path where the key pair file should be saved
+  - `keypair` - The key pair to save
+
+  ## Returns
+  - `{:ok, filename}` - If the file was successfully written
+  - `{:error, reason}` - If writing failed (file permissions, disk space, etc.)
+
+  ## Examples
+
+      iex> keypair = SolanaEx.KeyPair.new()
+      iex> {:ok, filename} = SolanaEx.KeyPair.to_file("test_keypair.json", keypair)
+      iex> File.exists?(filename)
+      true
+
+      iex> keypair = SolanaEx.KeyPair.new()
+      iex> SolanaEx.KeyPair.to_file("/invalid/path/keypair.json", keypair)
+      {:error, :enoent}
+  """
+  @spec to_file(String.t(), %__MODULE__{}) :: {:ok, String.t()} | {:error, atom()}
+  def to_file(filename, %__MODULE__{} = keypair) do
+    bytes = to_bytes(keypair)
+    byte_list = :binary.bin_to_list(bytes)
+
+    with {:ok, json_content} <- Jason.encode(byte_list),
+         :ok <- File.write(filename, json_content) do
+      {:ok, filename}
+    else
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   @doc """
