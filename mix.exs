@@ -26,6 +26,7 @@ defmodule SolanaEx.MixProject do
       {:jason, "~> 1.4"},
       {:tesla, "~> 1.15"},
       {:mint, "~> 1.0"},
+      {:req, "~> 0.5.0"},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false}
     ]
   end

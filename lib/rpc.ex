@@ -1,11 +1,48 @@
 defmodule SolanaEx.RPC do
-  def get_account_info(client, pubkey, opts \\ []) do
+  alias SolanaEx.RPC.AccountInfo
+  alias Req
+
+  defmodule AccountInfo do
+    defstruct [:lamports, :owner, :data, :executable, :rentEpoch, :space]
+  end
+
+  def get_account_info(client \\ Req, pubkey, opts \\ []) do
+    # TODO: Idea: Think about the option to provide a data converter.
     opts = filter_options(opts, [:commitment, :encoding, :dataslice, :min_context_slot])
+    request = rpc_request_encoded("getAccountInfo", pubkey, opts)
 
-    request =
-      rpc_request("getAccountInfo", pubkey, opts)
+    client.post("https://solana.drpc.org",
+      body: request,
+      headers: [{"Content-Type", "application/json"}]
+    )
+    |> handle_response(AccountInfo)
+  end
 
-    # TODO: Continue
+  def get_account_info!(client \\ Req, pubkey, opts \\ []) do
+    case get_account_info(client, pubkey, opts) do
+      {:ok, response} -> response
+      {:error, reason} -> raise "Failed to get account info: #{inspect(reason)}"
+    end
+  end
+
+  defp handle_response({:ok, response}, struct_module) do
+    case get_in(response.body, ["result", "value"]) do
+      nil -> {:error, :invalid_response}
+      data -> {:ok, to_struct(data, struct_module)}
+    end
+  end
+
+  defp handle_response(rest, _struct_module) do
+    rest
+  end
+
+  defp to_struct(data, struct_module) do
+    attrs =
+      for {key, value} <- data, into: %{} do
+        {String.to_atom(key), value}
+      end
+
+    struct(struct_module, attrs)
   end
 
   @doc """
@@ -19,7 +56,7 @@ defmodule SolanaEx.RPC do
   ## Parameters
 
     * `method` - The RPC method name as a string (e.g., "getAccountInfo")
-    * `params` - The primary parameter (typically a public key or account address)
+    * `params` - The primary parameter
     * `opts` - A keyword list of optional parameters (keys and values can be atoms or strings)
 
   ## Returns
@@ -58,6 +95,11 @@ defmodule SolanaEx.RPC do
       method: method,
       params: create_params(params, opts)
     }
+  end
+
+  defp rpc_request_encoded(method, params, opts \\ []) do
+    request = rpc_request(method, params, opts)
+    Jason.encode!(request)
   end
 
   defp create_params(argument, opts) do
