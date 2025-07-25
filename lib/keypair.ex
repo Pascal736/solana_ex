@@ -135,7 +135,7 @@ defmodule SolanaEx.KeyPair do
       iex> SolanaEx.KeyPair.is_valid?("not a keypair")
       false
   """
-  @spec is_valid?(%__MODULE__{}) :: boolean()
+  @spec is_valid?(key :: %__MODULE__{} | binary()) :: boolean()
   def is_valid?(%__MODULE__{public_key: pub, secret_key: secret})
       when byte_size(pub) == 32 and byte_size(secret) == 32 do
     pub == Ed25519.derive_public_key(secret)
