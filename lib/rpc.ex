@@ -1,52 +1,50 @@
 defmodule SolanaEx.RPC do
   alias SolanaEx.Rpc.Response
-  alias Req
+  alias SolanaEx.Client
 
-  def get_account_info(client \\ Req, pubkey, opts \\ []) do
+  def get_account_info(client \\ nil, pubkey, opts \\ []) do
     opts = filter_options(opts, [:commitment, :encoding, :dataslice, :min_context_slot])
     request = rpc_request_encoded("getAccountInfo", pubkey, opts)
-
-    client.post("https://solana.drpc.org",
-      body: request,
-      headers: [{"Content-Type", "application/json"}]
-    )
-    |> handle_response(Response.AccountInfo)
+    post(client, request) |> handle_response(Response.AccountInfo)
   end
 
-  def get_account_info!(client \\ Req, pubkey, opts \\ []) do
-    case get_account_info(client, pubkey, opts) do
-      {:ok, response} -> response
-      {:error, reason} -> raise "Failed to get account info: #{inspect(reason)}"
-    end
+  def get_account_info!(client \\ nil, pubkey, opts \\ []) do
+    get_account_info(client, pubkey, opts) |> response_to_raise()
   end
 
-  def get_balance(client \\ Req, pubkey, opts \\ []) do
+  def get_balance(client \\ nil, pubkey, opts \\ []) do
     opts = filter_options(opts, [:commitment, :min_context_slot])
     request = rpc_request_encoded("getBalance", pubkey, opts)
-
-    client.post("https://solana.drpc.org",
-      body: request,
-      headers: [{"Content-Type", "application/json"}]
-    )
-    |> handle_response(Response.Balance)
+    post(client, request) |> handle_response(Response.Balance)
   end
 
-  def get_balance!(client \\ Req, pubkey, opts \\ []) do
-    case get_balance(client, pubkey, opts) do
-      {:ok, response} -> response
-      {:error, reason} -> raise "Failed to get balance: #{inspect(reason)}"
-    end
+  def get_balance!(client \\ nil, pubkey, opts \\ []) do
+    get_balance(client, pubkey, opts) |> response_to_raise()
   end
 
-  def get_block_height(client \\ Req, opts \\ []) do
+  def get_block_height(client \\ nil, opts \\ []) do
     opts = filter_options(opts, [:commitment, :min_context_slot])
     request = rpc_request_encoded("getBlockHeight", nil, opts)
+    post(client, request) |> handle_response(Response.BlockHeight)
+  end
 
-    client.post("https://solana.drpc.org",
-      body: request,
-      headers: [{"Content-Type", "application/json"}]
-    )
-    |> handle_response(Response.BlockHeight)
+  def get_block_height!(client \\ nil, opts \\ []) do
+    get_block_height(client, opts) |> response_to_raise
+  end
+
+  def get_block_commitment(client \\ nil, block_height, opts \\ []) do
+    opts = filter_options(opts, [])
+    request = rpc_request_encoded("getBlockCommitment", block_height, opts)
+    post(client, request) |> handle_response(Response.BlockCommitment)
+  end
+
+  defp post(nil, body) do
+    client = Client.new([])
+    Tesla.post(client, "", body)
+  end
+
+  defp post(client, body) do
+    Tesla.post(client, "", body)
   end
 
   defp handle_response({:ok, %{body: %{"result" => %{"value" => data}}}}, struct_module) do
@@ -73,6 +71,9 @@ defmodule SolanaEx.RPC do
   defp handle_response(_rest, _struct_module) do
     {:error, :invalid_response}
   end
+
+  defp response_to_raise({:ok, response}), do: response
+  defp response_to_raise({:error, reason}), do: raise("RPC Error: #{inspect(reason)}")
 
   defp to_struct(data, struct_module) when is_map(data) do
     attrs =
@@ -139,7 +140,7 @@ defmodule SolanaEx.RPC do
     }
   end
 
-  defp rpc_request_encoded(method, params, opts \\ []) do
+  defp rpc_request_encoded(method, params, opts) do
     request = rpc_request(method, params, opts)
     Jason.encode!(request)
   end
@@ -159,6 +160,8 @@ defmodule SolanaEx.RPC do
 
   defp convert_value(value) when is_atom(value), do: to_string(value)
   defp convert_value(value), do: value
+
+  defp filter_options(_opts, []), do: []
 
   defp filter_options(opts, allowed) do
     Enum.filter(opts, fn {key, _value} -> key in allowed end)

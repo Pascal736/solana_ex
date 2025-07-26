@@ -36,4 +36,18 @@ defmodule SolanaEx.Rpc.Response do
       %BlockHeight{blockHeight: block_height}
     end
   end
+
+  defmodule BlockCommitment do
+    defstruct [:commitment, :total_stake]
+
+    def from_json(%{
+          "commitment" => commitment,
+          "totalStake" => total_stake
+        }) do
+      %BlockCommitment{
+        commitment: commitment,
+        total_stake: total_stake
+      }
+    end
+  end
 end
