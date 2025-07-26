@@ -46,18 +46,32 @@ defmodule SolanaEx.RPC do
       body: request,
       headers: [{"Content-Type", "application/json"}]
     )
-    |> handle_response(Response.BlockHeight, ["result"])
+    |> handle_response(Response.BlockHeight)
   end
 
-  defp handle_response({:ok, response}, struct_module, path \\ ["result", "value"]) do
-    case get_in(response.body, path) do
+  defp handle_response({:ok, %{body: %{"result" => %{"value" => data}}}}, struct_module) do
+    case data do
       nil -> {:error, :invalid_response}
       data -> {:ok, struct_module.from_json(data)}
     end
   end
 
-  defp handle_response(rest, _struct_module, _path) do
-    rest
+  defp handle_response({:ok, %{body: %{"result" => data}}}, struct_module) do
+    case data do
+      nil -> {:error, :invalid_response}
+      data -> {:ok, struct_module.from_json(data)}
+    end
+  end
+
+  defp handle_response({:ok, %{body: %{"error" => %{"message" => message}}}}, _struct_module) do
+    case message do
+      nil -> {:error, :invalid_response}
+      message -> {:error, message}
+    end
+  end
+
+  defp handle_response(_rest, _struct_module) do
+    {:error, :invalid_response}
   end
 
   defp to_struct(data, struct_module) when is_map(data) do
