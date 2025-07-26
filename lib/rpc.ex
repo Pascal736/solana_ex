@@ -1,13 +1,8 @@
 defmodule SolanaEx.RPC do
-  alias SolanaEx.RPC.AccountInfo
+  alias SolanaEx.Rpc.Response
   alias Req
 
-  defmodule AccountInfo do
-    defstruct [:lamports, :owner, :data, :executable, :rentEpoch, :space]
-  end
-
   def get_account_info(client \\ Req, pubkey, opts \\ []) do
-    # TODO: Idea: Think about the option to provide a data converter.
     opts = filter_options(opts, [:commitment, :encoding, :dataslice, :min_context_slot])
     request = rpc_request_encoded("getAccountInfo", pubkey, opts)
 
@@ -15,7 +10,7 @@ defmodule SolanaEx.RPC do
       body: request,
       headers: [{"Content-Type", "application/json"}]
     )
-    |> handle_response(AccountInfo)
+    |> handle_response(Response.AccountInfo)
   end
 
   def get_account_info!(client \\ Req, pubkey, opts \\ []) do
@@ -25,24 +20,57 @@ defmodule SolanaEx.RPC do
     end
   end
 
-  defp handle_response({:ok, response}, struct_module) do
-    case get_in(response.body, ["result", "value"]) do
-      nil -> {:error, :invalid_response}
-      data -> {:ok, to_struct(data, struct_module)}
+  def get_balance(client \\ Req, pubkey, opts \\ []) do
+    opts = filter_options(opts, [:commitment, :min_context_slot])
+    request = rpc_request_encoded("getBalance", pubkey, opts)
+
+    client.post("https://solana.drpc.org",
+      body: request,
+      headers: [{"Content-Type", "application/json"}]
+    )
+    |> handle_response(Response.Balance)
+  end
+
+  def get_balance!(client \\ Req, pubkey, opts \\ []) do
+    case get_balance(client, pubkey, opts) do
+      {:ok, response} -> response
+      {:error, reason} -> raise "Failed to get balance: #{inspect(reason)}"
     end
   end
 
-  defp handle_response(rest, _struct_module) do
+  def get_block_height(client \\ Req, opts \\ []) do
+    opts = filter_options(opts, [:commitment, :min_context_slot])
+    request = rpc_request_encoded("getBlockHeight", nil, opts)
+
+    client.post("https://solana.drpc.org",
+      body: request,
+      headers: [{"Content-Type", "application/json"}]
+    )
+    |> handle_response(Response.BlockHeight, ["result"])
+  end
+
+  defp handle_response({:ok, response}, struct_module, path \\ ["result", "value"]) do
+    case get_in(response.body, path) do
+      nil -> {:error, :invalid_response}
+      data -> {:ok, struct_module.from_json(data)}
+    end
+  end
+
+  defp handle_response(rest, _struct_module, _path) do
     rest
   end
 
-  defp to_struct(data, struct_module) do
+  defp to_struct(data, struct_module) when is_map(data) do
     attrs =
       for {key, value} <- data, into: %{} do
         {String.to_atom(key), value}
       end
 
     struct(struct_module, attrs)
+  end
+
+  defp to_struct(data, struct_module) when is_integer(data) do
+    struct(struct_module, value: data)
   end
 
   @doc """
