@@ -29,6 +29,36 @@ defmodule SolanaEx.Rpc.Response do
     end
   end
 
+  defmodule Block do
+    # TODO: Parse transactions
+    defstruct [
+      :block_height,
+      :block_time,
+      :block_hash,
+      :parent_slot,
+      :previous_blockhash,
+      transactions: []
+    ]
+
+    def from_json(%{
+          "blockHeight" => block_height,
+          "blockTime" => block_time,
+          "blockhash" => block_hash,
+          "parentSlot" => parent_slot,
+          "previousBlockhash" => previous_blockhash,
+          "transactions" => transactions
+        }) do
+      %Block{
+        block_height: block_height,
+        block_time: block_time,
+        block_hash: block_hash,
+        parent_slot: parent_slot,
+        previous_blockhash: previous_blockhash,
+        transactions: transactions
+      }
+    end
+  end
+
   defmodule BlockHeight do
     defstruct [:blockHeight]
 

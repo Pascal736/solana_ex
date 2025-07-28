@@ -2,7 +2,7 @@ defmodule SolanaEx.Client do
   alias Tesla
 
   def new(opts) do
-    base_url = Keyword.get(opts, :base_url, "https://solana.drpc.org")
+    base_url = Keyword.get(opts, :base_url, "https://api.mainnet-beta.solana.com")
     adapter = Keyword.get(opts, :adapter, Tesla.Adapter.Mint)
 
     middleware = [

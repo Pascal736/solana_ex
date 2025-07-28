@@ -1,41 +1,64 @@
 defmodule SolanaEx.RPC do
   alias SolanaEx.Rpc.Response
   alias SolanaEx.Client
+  alias Inflex
 
-  def get_account_info(client \\ nil, pubkey, opts \\ []) do
+  def get_account_info(client, pubkey, opts \\ []) do
     opts = filter_options(opts, [:commitment, :encoding, :dataslice, :min_context_slot])
     request = rpc_request_encoded("getAccountInfo", pubkey, opts)
     post(client, request) |> handle_response(Response.AccountInfo)
   end
 
-  def get_account_info!(client \\ nil, pubkey, opts \\ []) do
+  def get_account_info!(client, pubkey, opts \\ []) do
     get_account_info(client, pubkey, opts) |> response_to_raise()
   end
 
-  def get_balance(client \\ nil, pubkey, opts \\ []) do
+  def get_balance(client, pubkey, opts \\ []) do
     opts = filter_options(opts, [:commitment, :min_context_slot])
     request = rpc_request_encoded("getBalance", pubkey, opts)
     post(client, request) |> handle_response(Response.Balance)
   end
 
-  def get_balance!(client \\ nil, pubkey, opts \\ []) do
+  def get_balance!(client, pubkey, opts \\ []) do
     get_balance(client, pubkey, opts) |> response_to_raise()
   end
 
-  def get_block_height(client \\ nil, opts \\ []) do
+  def get_block(client, slot_number, opts \\ []) do
+    opts =
+      filter_options(opts, [
+        :commitment,
+        :encoding,
+        :max_supported_transaction_version,
+        :transaction_details,
+        :rewards
+      ])
+
+    request = rpc_request_encoded("getBlock", slot_number, opts)
+    post(client, request) |> handle_response(Response.Block)
+  end
+
+  def get_block!(slot_number, opts \\ []) do
+    get_block(slot_number, opts) |> response_to_raise()
+  end
+
+  def get_block_height(client, opts \\ []) do
     opts = filter_options(opts, [:commitment, :min_context_slot])
     request = rpc_request_encoded("getBlockHeight", nil, opts)
     post(client, request) |> handle_response(Response.BlockHeight)
   end
 
-  def get_block_height!(client \\ nil, opts \\ []) do
+  def get_block_height!(client, opts \\ []) do
     get_block_height(client, opts) |> response_to_raise
   end
 
-  def get_block_commitment(client \\ nil, block_height, opts \\ []) do
+  def get_block_commitment(client, block_height, opts \\ []) do
     opts = filter_options(opts, [])
     request = rpc_request_encoded("getBlockCommitment", block_height, opts)
     post(client, request) |> handle_response(Response.BlockCommitment)
+  end
+
+  def get_block_commitment!(client, block_height, opts \\ []) do
+    get_block_commitment(client, block_height, opts) |> response_to_raise()
   end
 
   defp post(nil, body) do
@@ -72,6 +95,7 @@ defmodule SolanaEx.RPC do
     {:error, :invalid_response}
   end
 
+  # TODO: Think about raising custom exception.
   defp response_to_raise({:ok, response}), do: response
   defp response_to_raise({:error, reason}), do: raise("RPC Error: #{inspect(reason)}")
 
@@ -154,7 +178,7 @@ defmodule SolanaEx.RPC do
 
   defp convert_options(opts) do
     Enum.reduce(opts, %{}, fn {key, value}, acc ->
-      Map.put(acc, key, convert_value(value))
+      Map.put(acc, convert_key(key), convert_value(value))
     end)
   end
 
@@ -165,5 +189,15 @@ defmodule SolanaEx.RPC do
 
   defp filter_options(opts, allowed) do
     Enum.filter(opts, fn {key, _value} -> key in allowed end)
+  end
+
+  defp convert_key(value) when is_atom(value) do
+    to_string(value) |> snake_to_camel()
+  end
+
+  def snake_to_camel(string) when is_binary(string) do
+    camelized = Macro.camelize(string)
+    <<first::utf8, rest::binary>> = camelized
+    String.downcase(<<first::utf8>>) <> rest
   end
 end
