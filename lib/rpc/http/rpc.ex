@@ -1,7 +1,6 @@
 defmodule SolanaEx.RPC do
   alias SolanaEx.Rpc.Response
   alias SolanaEx.Client
-  alias Inflex
 
   def get_account_info(client, pubkey, opts \\ []) do
     opts = filter_options(opts, [:commitment, :encoding, :dataslice, :min_context_slot])
@@ -146,8 +145,9 @@ defmodule SolanaEx.RPC do
       ...>   method: "getAccountInfo",
       ...>   params: [
       ...>     "vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg",
-      ...>     %{commitment: "finalized", encoding: "base58"}
-      ...>   ]
+      ...>     %{"commitment" => "finalized", "encoding" => "base58"},
+      ...>   ],
+      ...>   id: 1
       ...> } = request
 
       iex> # With no options
@@ -195,7 +195,7 @@ defmodule SolanaEx.RPC do
     to_string(value) |> snake_to_camel()
   end
 
-  def snake_to_camel(string) when is_binary(string) do
+  defp snake_to_camel(string) when is_binary(string) do
     camelized = Macro.camelize(string)
     <<first::utf8, rest::binary>> = camelized
     String.downcase(<<first::utf8>>) <> rest

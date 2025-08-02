@@ -26,7 +26,8 @@ defmodule SolanaEx.MixProject do
       {:jason, "~> 1.4"},
       {:tesla, "~> 1.15"},
       {:mint, "~> 1.0"},
-      {:req, "~> 0.5.0"},
+      {:websockex, "~> 0.5.0", hex: :websockex_wt},
+      {:websocket_mock, "~> 0.1.1", only: :test},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false}
     ]
   end
