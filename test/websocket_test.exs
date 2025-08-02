@@ -7,11 +7,11 @@ defmodule SolanaEx.WebsocketTest do
   describe "websocket client" do
     test "sends correct subscribe message to server" do
       {:ok, mock} = WebSocketMock.start()
-      {:ok, pid} = WsClient.start_link(mock.url)
+      {:ok, client} = WsClient.start(url: mock.url)
 
       request = %AccountSubscribe{pubkey: "CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12"}
 
-      WsClient.subscribe(pid, request, [])
+      WsClient.subscribe(client, request, [])
       Process.sleep(10)
 
       assert WebSocketMock.received_messages(mock) == [
