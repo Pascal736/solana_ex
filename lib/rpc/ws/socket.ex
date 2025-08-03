@@ -1,4 +1,6 @@
 defmodule SolanaEx.Rpc.WsSocket do
+  alias SolanaEx.RPC.Request
+
   use WebSockex
 
   @ping_interval 20_000
@@ -8,35 +10,32 @@ defmodule SolanaEx.Rpc.WsSocket do
     WebSockex.start_link(url, module, state)
   end
 
+  @impl true
   def handle_connect(_conn, state) do
-    IO.puts("Connected to Solana WebSocket")
     schedule_next_ping()
     {:ok, state}
   end
 
   @impl true
-  def handle_frame({_type, msg}, state) do
-    dbg(msg)
+  def handle_frame({:text, msg}, state) do
+    case Jason.decode(msg) do
+      {:ok, decoded} ->
+        send(state.parent_pid, {:ws_message, decoded})
+
+      {:error, _} ->
+        :ok
+    end
 
     {:ok, state}
   end
 
   @impl true
-  def handle_cast(:assign_callbacks, {id, callback}, state) do
-    IO.puts("Assigning callbacks for ID: #{inspect(id)} with callbacks")
-    state = state |> Map.put(id, callback)
-    {:noreply, state}
-  end
-
-  @impl true
-  def handle_cast(msg, state) do
-    dbg(msg)
-    {:reply, "thing", state}
+  def handle_cast({:send_frame, frame}, state) do
+    {:reply, frame, state}
   end
 
   @impl true
   def handle_info(:send_ping, state) do
-    IO.puts("Sending ping to keep connection alive")
     schedule_next_ping()
     {:reply, {:ping, ""}, state}
   end

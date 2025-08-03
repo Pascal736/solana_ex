@@ -1,10 +1,11 @@
 defmodule SolanaEx.RPC do
   alias SolanaEx.Rpc.Response
   alias SolanaEx.Client
+  alias SolanaEx.RPC.Request
 
   def get_account_info(client, pubkey, opts \\ []) do
     opts = filter_options(opts, [:commitment, :encoding, :dataslice, :min_context_slot])
-    request = rpc_request_encoded("getAccountInfo", pubkey, opts)
+    request = Request.new("getAccountInfo", pubkey, opts) |> Request.encode!()
     post(client, request) |> handle_response(Response.AccountInfo)
   end
 
@@ -14,7 +15,7 @@ defmodule SolanaEx.RPC do
 
   def get_balance(client, pubkey, opts \\ []) do
     opts = filter_options(opts, [:commitment, :min_context_slot])
-    request = rpc_request_encoded("getBalance", pubkey, opts)
+    request = Request.new("getBalance", pubkey, opts) |> Request.encode!()
     post(client, request) |> handle_response(Response.Balance)
   end
 
@@ -32,7 +33,7 @@ defmodule SolanaEx.RPC do
         :rewards
       ])
 
-    request = rpc_request_encoded("getBlock", slot_number, opts)
+    request = Request.new("getBlock", slot_number, opts) |> Request.encode!()
     post(client, request) |> handle_response(Response.Block)
   end
 
@@ -42,7 +43,7 @@ defmodule SolanaEx.RPC do
 
   def get_block_height(client, opts \\ []) do
     opts = filter_options(opts, [:commitment, :min_context_slot])
-    request = rpc_request_encoded("getBlockHeight", nil, opts)
+    request = Request.new("getBlockHeight", nil, opts) |> Request.encode!()
     post(client, request) |> handle_response(Response.BlockHeight)
   end
 
@@ -52,12 +53,18 @@ defmodule SolanaEx.RPC do
 
   def get_block_commitment(client, block_height, opts \\ []) do
     opts = filter_options(opts, [])
-    request = rpc_request_encoded("getBlockCommitment", block_height, opts)
+    request = Request.new("getBlockCommitment", block_height, opts) |> Request.encode!()
     post(client, request) |> handle_response(Response.BlockCommitment)
   end
 
   def get_block_commitment!(client, block_height, opts \\ []) do
     get_block_commitment(client, block_height, opts) |> response_to_raise()
+  end
+
+  defp filter_options(_opts, []), do: []
+
+  defp filter_options(opts, allowed) do
+    Enum.filter(opts, fn {key, _value} -> key in allowed end)
   end
 
   defp post(nil, body) do
@@ -109,95 +116,5 @@ defmodule SolanaEx.RPC do
 
   defp to_struct(data, struct_module) when is_integer(data) do
     struct(struct_module, value: data)
-  end
-
-  @doc """
-  Creates a JSON-RPC 2.0 request payload for Solana API calls.
-
-  This function builds a properly formatted JSON-RPC request with the specified method
-  and parameters. It automatically generates a unique request ID and converts atom
-  values to strings for JSON compatibility. The options are assumed to be pre-filtered
-  by the calling function.
-
-  ## Parameters
-
-    * `method` - The RPC method name as a string (e.g., "getAccountInfo")
-    * `params` - The primary parameter
-    * `opts` - A keyword list of optional parameters (keys and values can be atoms or strings)
-
-  ## Returns
-
-  Returns a map representing the JSON-RPC 2.0 request structure with:
-    * `:jsonrpc` - Always "2.0"
-    * `:id` - A unique positive integer for request tracking
-    * `:method` - The specified RPC method
-    * `:params` - An array containing the main parameter and optional configuration object
-
-  ## Examples
-
-      iex> request = SolanaEx.RPC.rpc_request(
-      ...>   "getAccountInfo",
-      ...>   "vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg",
-      ...>   [commitment: :finalized, encoding: :base58]
-      ...> )
-      iex> %{
-      ...>   jsonrpc: "2.0",
-      ...>   method: "getAccountInfo",
-      ...>   params: [
-      ...>     "vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg",
-      ...>     %{"commitment" => "finalized", "encoding" => "base58"},
-      ...>   ],
-      ...>   id: 1
-      ...> } = request
-
-      iex> # With no options
-      iex> request = SolanaEx.RPC.rpc_request("getBalance", "vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg")
-      iex> request.params
-      ["vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg"]
-  """
-  def rpc_request(method, params, opts \\ []) do
-    %{
-      jsonrpc: "2.0",
-      id: :erlang.unique_integer([:positive, :monotonic]),
-      method: method,
-      params: create_params(params, opts)
-    }
-  end
-
-  defp rpc_request_encoded(method, params, opts) do
-    request = rpc_request(method, params, opts)
-    Jason.encode!(request)
-  end
-
-  defp create_params(argument, opts) do
-    case convert_options(opts) do
-      options when map_size(options) == 0 -> [argument]
-      options -> [argument, options]
-    end
-  end
-
-  defp convert_options(opts) do
-    Enum.reduce(opts, %{}, fn {key, value}, acc ->
-      Map.put(acc, convert_key(key), convert_value(value))
-    end)
-  end
-
-  defp convert_value(value) when is_atom(value), do: to_string(value)
-  defp convert_value(value), do: value
-
-  defp filter_options(_opts, []), do: []
-
-  defp filter_options(opts, allowed) do
-    Enum.filter(opts, fn {key, _value} -> key in allowed end)
-  end
-
-  defp convert_key(value) when is_atom(value) do
-    to_string(value) |> snake_to_camel()
-  end
-
-  defp snake_to_camel(string) when is_binary(string) do
-    camelized = Macro.camelize(string)
-    <<first::utf8, rest::binary>> = camelized
-    String.downcase(<<first::utf8>>) <> rest
   end
 end

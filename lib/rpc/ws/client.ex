@@ -1,40 +1,81 @@
 defmodule SolanaEx.RPC.WsClient do
-  alias SolanaEx.WS.Methods
+  use GenServer
+
   alias SolanaEx.Rpc.WsSocket
-  alias SolanaEx.RPC
+  alias SolanaEx.RPC.Request
 
   @default_url "ws://api.mainnet-beta.solana.com"
 
-  # Requirements: User can has convnient interface for calling Solana RPC WS methods 
-  # User can provide callback for receiving messages
-  # State manages subscriptions to handle callbacks and be able to use a single WS connection
-  # Note: The way the Solana nodes are implemented sending the same requests multiple times will lead to the identical ID.
-  #
-  #
-  defstruct [:client_pid]
-
-  def start(opts \\ []) do
-    url = Keyword.get(opts, :url, @default_url)
-    state = %{active_subscriptions: %{}}
-    {:ok, pid} = WsSocket.start_link(url, WsSocket, state)
-
-    {:ok, %__MODULE__{client_pid: pid}}
+  def start_link(opts \\ []) do
+    name = Keyword.get(opts, :name, __MODULE__)
+    GenServer.start_link(__MODULE__, opts)
   end
 
-  def subscribe(
-        %__MODULE__{client_pid: pid},
-        %Methods.AccountSubscribe{} = method,
-        callbacks \\ []
-      ) do
-    # Change this into cast to store id in the same function.
-    request =
-      RPC.rpc_request("accountSubscribe", method.pubkey, method.opts)
-      |> Jason.encode!()
+  def init(opts) do
+    url = Keyword.get(opts, :url, @default_url)
+    {:ok, pid} = WsSocket.start_link(url, WsSocket, %{parent_pid: self()})
+    state = %{subscriptions: %{}, callbacks: %{}, pending_requests: %{}, socket_pid: pid}
+    {:ok, state}
+  end
 
-    # TODO: Assign request ID and callbacks to state
-    # id = request |> Map.get("id", nil)
-    # cast(self(), {:assign_callbacks, id, callbacks})
+  def subscribe(client, %Request{} = request, callbacks \\ []) do
+    GenServer.call(client, {:subscribe, request, callbacks})
+  end
 
-    WebSockex.send_frame(pid, {:text, request})
+  def subscriptions(client) do
+    GenServer.call(client, :subscriptions)
+  end
+
+  def callbacks(client) do
+    GenServer.call(client, :callbacks)
+  end
+
+  def handle_call({:subscribe, request, callbacks}, from, state) do
+    new_state = add_pending_request(state, request, from, callbacks)
+    WebSockex.cast(state.socket_pid, {:send_frame, {:text, Request.encode!(request)}})
+
+    {:noreply, new_state}
+  end
+
+  def handle_call(:subscriptions, _from, state) do
+    {:reply, {:ok, state.subscriptions}, state}
+  end
+
+  def handle_call(:callbacks, _from, state) do
+    {:reply, {:ok, state.callbacks}, state}
+  end
+
+  def handle_info({:ws_message, %{"id" => id, "result" => subscription_id}}, state) do
+    case Map.pop(state.pending_requests, id) do
+      {{from, callbacks}, remaining_requests} ->
+        GenServer.reply(from, {:ok, subscription_id})
+
+        new_state = %{
+          state
+          | pending_requests: remaining_requests,
+            subscriptions: Map.put(state.subscriptions, id, subscription_id),
+            callbacks: Map.put(state.callbacks, subscription_id, callbacks)
+        }
+
+        {:noreply, new_state}
+
+      {nil, _} ->
+        {:noreply, state}
+    end
+  end
+
+  def handle_info({:ws_message, %{"params" => params}}, state) do
+    msg = get_in(params, ["result", "value", "data"])
+    subscription_id = get_in(params, ["subscription"])
+
+    Map.get(state.callbacks, subscription_id, [])
+    |> Enum.each(fn callback -> spawn(fn -> callback.(msg) end) end)
+
+    {:noreply, state}
+  end
+
+  defp add_pending_request(state, request, from, callbacks) do
+    pending_requests = Map.put(state.pending_requests, request.id, {from, callbacks})
+    %{state | pending_requests: pending_requests}
   end
 end
