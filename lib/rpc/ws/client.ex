@@ -8,7 +8,7 @@ defmodule SolanaEx.RPC.WsClient do
 
   def start_link(opts \\ []) do
     name = Keyword.get(opts, :name, __MODULE__)
-    GenServer.start_link(__MODULE__, opts)
+    GenServer.start_link(__MODULE__, opts, name: name)
   end
 
   def init(opts) do
@@ -64,12 +64,11 @@ defmodule SolanaEx.RPC.WsClient do
     end
   end
 
-  def handle_info({:ws_message, %{"params" => params}}, state) do
-    msg = get_in(params, ["result", "value", "data"])
-    subscription_id = get_in(params, ["subscription"])
+  def handle_info({:ws_message, message}, state) do
+    subscription_id = get_in(message, ["params", "subscription"])
 
     Map.get(state.callbacks, subscription_id, [])
-    |> Enum.each(fn callback -> spawn(fn -> callback.(msg) end) end)
+    |> Enum.each(fn callback -> spawn(fn -> callback.(message) end) end)
 
     {:noreply, state}
   end

@@ -1,4 +1,5 @@
 defmodule SolanaEx.WebsocketTest do
+  alias Mint.HTTP1.Request
   alias SolanaEx.RPC
   alias SolanaEx.RPC.WsClient
   alias SolanaEx.WS.Methods
@@ -37,7 +38,7 @@ defmodule SolanaEx.WebsocketTest do
 
       method = %AccountSubscribe{pubkey: "CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12"}
       request = Request.new(Methods.name(method), method.pubkey, method.opts)
-      msg = request_as_frame(request)
+      msg = Request.encode!(request)
 
       response = %{
         "jsonrpc" => "2.0",
@@ -46,11 +47,11 @@ defmodule SolanaEx.WebsocketTest do
         "id" => request.id
       }
 
-      WebSocketMock.reply_with(mock, msg, {:text, response})
+      WebSocketMock.reply_with(mock, msg, response)
       WsClient.subscribe(client, request, [fn msg -> IO.puts(msg) end])
       Process.sleep(10)
 
-      assert WebSocketMock.received_messages(mock) == [msg]
+      assert WebSocketMock.received_messages(mock) == [{:text, msg}]
 
       assert WsClient.subscriptions(client) == {:ok, %{request.id => 100}}
       {:ok, %{100 => callbacks}} = WsClient.callbacks(client)
@@ -63,7 +64,7 @@ defmodule SolanaEx.WebsocketTest do
 
       method = %AccountSubscribe{pubkey: "CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12"}
       request = Request.new(Methods.name(method), method.pubkey, method.opts)
-      msg = request_as_frame(request)
+      msg = Request.encode!(request)
 
       response = %{
         "jsonrpc" => "2.0",
@@ -75,27 +76,24 @@ defmodule SolanaEx.WebsocketTest do
       test_pid = self()
 
       callback = fn msg ->
-        send(test_pid, :callback_executed)
+        send(test_pid, {:callback_executed, msg})
       end
 
-      WebSocketMock.reply_with(mock, msg, {:text, response})
+      WebSocketMock.reply_with(mock, msg, response)
       WsClient.subscribe(client, request, [callback])
       [%{client_id: client_id}] = WebSocketMock.list_clients(mock)
+
+      subscription_msg = valid_account_subscribe_event(100)
 
       WebSocketMock.send_message(
         mock,
         client_id,
-        {:text, Jason.encode!(valid_account_subscribe_event(100))}
+        Jason.encode!(subscription_msg)
       )
 
-      assert_receive :callback_executed, 1000
+      assert_receive {:callback_executed, received}, 1000
+      assert received == subscription_msg
     end
-  end
-
-  defp request_as_frame(request) do
-    {:text,
-     request
-     |> Request.encode!()}
   end
 
   defp valid_account_subscribe_event(subscription_id) do
