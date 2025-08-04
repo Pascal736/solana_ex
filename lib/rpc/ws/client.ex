@@ -22,6 +22,11 @@ defmodule SolanaEx.RPC.WsClient do
     GenServer.call(client, {:subscribe, request, callbacks})
   end
 
+  # TODO: Implement
+  def unsubscribe(client, request_id) do
+    GenServer.call(client, {:unsubscribe, request_id})
+  end
+
   def subscriptions(client) do
     GenServer.call(client, :subscriptions)
   end

@@ -64,6 +64,11 @@ defmodule SolanaEx.RPC.Request do
     Jason.encode!(request)
   end
 
+  defp create_params([], opts) do
+    # TODO: This is a workaround for not being able to handle this case better in the macro which generates the function.
+    create_params(nil, opts)
+  end
+
   defp create_params(argument, opts) do
     case convert_options(opts) do
       options when map_size(options) == 0 -> [argument]
