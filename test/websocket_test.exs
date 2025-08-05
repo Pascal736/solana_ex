@@ -70,6 +70,33 @@ defmodule SolanaEx.WebsocketTest do
       assert_receive {:callback_executed, received}, 1000
       assert received == subscription_msg
     end
+
+    test "can be called without client parameter" do
+      {:ok, mock} = WebSocketMock.start()
+      {:ok, client} = WsClient.start_link(url: mock.url)
+
+      method = %AccountSubscribe{pubkey: "CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12"}
+      request = Request.new(WsMethods.name(method), method.pubkey, method.opts)
+      msg = Request.encode!(request)
+
+      response = %{
+        "jsonrpc" => "2.0",
+        # subscription ID
+        "result" => 100,
+        "id" => request.id
+      }
+
+      test_pid = self()
+
+      callback = fn msg ->
+        send(test_pid, {:callback_executed, msg})
+      end
+
+      WebSocketMock.reply_with(mock, msg, response)
+      WsClient.subscribe(client, request, [callback])
+
+      assert WsClient.subscriptions(WsClient) == {:ok, %{request.id => 100}}
+    end
   end
 
   defp valid_account_subscribe_event(subscription_id) do
