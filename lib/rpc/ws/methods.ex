@@ -4,9 +4,9 @@ defmodule SolanaEx.RPC.WsMethods do
   end
 
   defmodule BlockSubscribe do
-    # accounts can be eiter "all" or "mentionsAccountOrProgram" => pubkey
-    defstruct(
-      accounts: "all",
+    # TODO: Implement custom serialization. accounts can be eiter "all" or "mentionsAccountOrProgram" => pubkey
+    defstruct([
+      :mentions_account_or_progran,
       opts: [
         commitment: "finalized",
         encoding: "jsonParsed",
@@ -14,7 +14,7 @@ defmodule SolanaEx.RPC.WsMethods do
         max_supported_transaction_version: 0,
         show_rewards: true
       ]
-    )
+    ])
   end
 
   def name(%AccountSubscribe{}), do: "accountSubscribe"
