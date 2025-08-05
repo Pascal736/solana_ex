@@ -1,4 +1,4 @@
 defmodule SolanaEx.RPCTest do
   use ExUnit.Case
-  doctest SolanaEx.RPC
+  doctest SolanaEx.RPC.Request
 end

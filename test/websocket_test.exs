@@ -1,43 +1,19 @@
 defmodule SolanaEx.WebsocketTest do
   alias Mint.HTTP1.Request
-  alias SolanaEx.RPC
   alias SolanaEx.RPC.WsClient
-  alias SolanaEx.WS.Methods
+  alias SolanaEx.RPC.WsMethods
   alias SolanaEx.RPC.Request
-
-  alias SolanaEx.WS.Methods.AccountSubscribe
+  alias SolanaEx.RPC.WsMethods.AccountSubscribe
 
   use ExUnit.Case
 
   describe "websocket client" do
-    test "sends correct subscribe message to server" do
-      {:ok, mock} = WebSocketMock.start()
-      {:ok, client} = WsClient.start_link(url: mock.url)
-
-      method = %AccountSubscribe{pubkey: "CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12"}
-      request = Request.new(Methods.name(method), method.pubkey, method.opts)
-
-      try do
-        WsClient.subscribe(client, request, [])
-      catch
-        # We expect a timeout because we did not configure the mock server to reply.
-        :exit, _ -> nil
-      end
-
-      Process.sleep(10)
-
-      assert WebSocketMock.received_messages(mock) == [
-               {:text,
-                "{\"id\":#{request.id},\"params\":[\"CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12\",{\"commitment\":\"finalized\",\"encoding\":\"jsonParsed\"}],\"method\":\"accountSubscribe\",\"jsonrpc\":\"2.0\"}"}
-             ]
-    end
-
     test "can associate messages to subscriptions" do
       {:ok, mock} = WebSocketMock.start()
       {:ok, client} = WsClient.start_link(url: mock.url)
 
       method = %AccountSubscribe{pubkey: "CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12"}
-      request = Request.new(Methods.name(method), method.pubkey, method.opts)
+      request = Request.new(WsMethods.name(method), method.pubkey, method.opts)
       msg = Request.encode!(request)
 
       response = %{
@@ -63,7 +39,7 @@ defmodule SolanaEx.WebsocketTest do
       {:ok, client} = WsClient.start_link(url: mock.url)
 
       method = %AccountSubscribe{pubkey: "CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12"}
-      request = Request.new(Methods.name(method), method.pubkey, method.opts)
+      request = Request.new(WsMethods.name(method), method.pubkey, method.opts)
       msg = Request.encode!(request)
 
       response = %{

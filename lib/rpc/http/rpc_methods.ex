@@ -1,5 +1,5 @@
-defmodule SolanaEx.Rpc.HttpMethods do
-  alias SolanaEx.Rpc.Response
+defmodule SolanaEx.RPC.HttpMethods do
+  alias SolanaEx.RPC.Response
 
   def methods() do
     [

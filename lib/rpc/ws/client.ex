@@ -1,7 +1,7 @@
 defmodule SolanaEx.RPC.WsClient do
   use GenServer
 
-  alias SolanaEx.Rpc.WsSocket
+  alias SolanaEx.RPC.WsSocket
   alias SolanaEx.RPC.Request
 
   @default_url "ws://api.mainnet-beta.solana.com"

@@ -1,4 +1,4 @@
-defmodule SolanaEx.Rpc.Response do
+defmodule SolanaEx.RPC.Response do
   defmodule AccountInfo do
     defstruct [:lamports, :owner, :data, :executable, :rent_epoch, :space]
 

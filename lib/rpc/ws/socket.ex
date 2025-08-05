@@ -1,11 +1,8 @@
-defmodule SolanaEx.Rpc.WsSocket do
-  alias SolanaEx.RPC.Request
-
+defmodule SolanaEx.RPC.WsSocket do
   use WebSockex
 
   @ping_interval 20_000
 
-  @impl true
   def start_link(url, module, state) do
     WebSockex.start_link(url, module, state)
   end

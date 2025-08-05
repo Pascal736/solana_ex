@@ -1,4 +1,4 @@
-defmodule SolanaEx.WS.Methods do
+defmodule SolanaEx.RPC.WsMethods do
   defmodule AccountSubscribe do
     defstruct([:pubkey, opts: [commitment: "finalized", encoding: "jsonParsed"]])
   end

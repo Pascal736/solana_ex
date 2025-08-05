@@ -1,6 +1,6 @@
-defmodule SolanaEx.Http do
+defmodule SolanaEx.RPC.Http do
   alias SolanaEx.RPC.Request
-  alias SolanaEx.Rpc.HttpMethods
+  alias SolanaEx.RPC.HttpMethods
 
   HttpMethods.methods()
   |> Enum.each(fn {name, args, opts, rpc_method, response_module} ->
