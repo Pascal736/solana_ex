@@ -5,8 +5,8 @@ defmodule SolanaEx.RPC.WsMethods do
 
   defmodule BlockSubscribe do
     # accounts can be eiter "all" or "mentionsAccountOrProgram" => pubkey
-    defstruct([
-      :accounts,
+    defstruct(
+      accounts: "all",
       opts: [
         commitment: "finalized",
         encoding: "jsonParsed",
@@ -14,7 +14,7 @@ defmodule SolanaEx.RPC.WsMethods do
         max_supported_transaction_version: 0,
         show_rewards: true
       ]
-    ])
+    )
   end
 
   def name(%AccountSubscribe{}), do: "accountSubscribe"
