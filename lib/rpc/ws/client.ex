@@ -25,7 +25,13 @@ defmodule SolanaEx.RPC.WsClient do
 
   def subscribe_account(client, pubkey, opts, callbacks \\ []) do
     method = %WsMethods.AccountSubscribe{pubkey: pubkey}
+    # TODO: Add proper merging of opts.
     request = Request.new("accountSubscribe", method.pubkey, method.opts)
+    subscribe(client, request, callbacks)
+  end
+
+  def subscribe_slot(client, callbacks \\ []) do
+    request = Request.new("slotSubscribe", [], [])
     subscribe(client, request, callbacks)
   end
 
