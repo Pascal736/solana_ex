@@ -3,6 +3,7 @@ defmodule SolanaEx.RPC.WsClient do
 
   alias SolanaEx.RPC.WsSocket
   alias SolanaEx.RPC.Request
+  alias SolanaEx.RPC.WsMethods
 
   @default_url "ws://api.mainnet-beta.solana.com"
 
@@ -20,6 +21,12 @@ defmodule SolanaEx.RPC.WsClient do
 
   def subscribe(client, %Request{} = request, callbacks \\ []) do
     GenServer.call(client, {:subscribe, request, callbacks})
+  end
+
+  def subscribe_account(client, pubkey, opts, callbacks \\ []) do
+    method = %WsMethods.AccountSubscribe{pubkey: pubkey}
+    request = Request.new("accountSubscribe", method.pubkey, method.opts)
+    subscribe(client, request, callbacks)
   end
 
   # TODO: Implement
