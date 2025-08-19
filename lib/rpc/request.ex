@@ -1,6 +1,14 @@
 defmodule SolanaEx.RPC.Request do
-  @derive Jason.Encoder
   defstruct [:jsonrpc, :id, :method, :params]
+
+  defimpl Jason.Encoder do
+    def encode(value, opts) do
+      value
+      |> Map.from_struct()
+      |> Map.reject(fn {_k, v} -> is_nil(v) end)
+      |> Jason.Encode.map(opts)
+    end
+  end
 
   @doc """
   Creates a new JSON-RPC 2.0 request struct for Solana API calls.
@@ -71,7 +79,7 @@ defmodule SolanaEx.RPC.Request do
 
   defp create_params(argument, opts) do
     case convert_options(opts) do
-      options when map_size(options) == 0 -> [argument]
+      options when map_size(options) == 0 -> nil
       options -> [argument, options]
     end
   end
