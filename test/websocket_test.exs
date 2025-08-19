@@ -1,5 +1,4 @@
 defmodule SolanaEx.WebsocketTest do
-  alias Mint.HTTP1.Request
   alias SolanaEx.RPC.WsClient
   alias SolanaEx.RPC.WsMethods
   alias SolanaEx.RPC.Request
@@ -8,6 +7,30 @@ defmodule SolanaEx.WebsocketTest do
   use ExUnit.Case
 
   describe "websocket client" do
+    test "sends correct RPC request for accountSubscribe method" do
+      {:ok, mock} = WebSocketMock.start()
+      {:ok, client} = WsClient.start_link(url: mock.url, mame: :test1)
+      WebSocketMock.reply_with(mock, always_match(), subscription_resp_transformer())
+
+      WsClient.subscribe_account(client, "CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12", [])
+
+      [{:text, received}] = WebSocketMock.received_messages(mock)
+      decoded = Jason.decode!(received)
+
+      assert %{
+               "jsonrpc" => "2.0",
+               "method" => "accountSubscribe",
+               "params" => [
+                 "CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12",
+                 %{
+                   "encoding" => "jsonParsed",
+                   "commitment" => "finalized"
+                 }
+               ],
+               "id" => _id
+             } = decoded
+    end
+
     test "can associate messages to subscriptions" do
       {:ok, mock} = WebSocketMock.start()
       {:ok, client} = WsClient.start_link(url: mock.url)
@@ -16,13 +39,7 @@ defmodule SolanaEx.WebsocketTest do
       request = Request.new(WsMethods.name(method), method.pubkey, method.opts)
       msg = Request.encode!(request)
 
-      response = %{
-        "jsonrpc" => "2.0",
-        # subscription ID
-        "result" => 100,
-        "id" => request.id
-      }
-
+      response = subscription_response(request.id)
       WebSocketMock.reply_with(mock, msg, response)
       WsClient.subscribe(client, request, [fn msg -> IO.puts(msg) end])
       Process.sleep(10)
@@ -41,13 +58,7 @@ defmodule SolanaEx.WebsocketTest do
       method = %AccountSubscribe{pubkey: "CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12"}
       request = Request.new(WsMethods.name(method), method.pubkey, method.opts)
       msg = Request.encode!(request)
-
-      response = %{
-        "jsonrpc" => "2.0",
-        # subscription ID
-        "result" => 100,
-        "id" => request.id
-      }
+      response = subscription_response(request.id)
 
       test_pid = self()
 
@@ -78,13 +89,7 @@ defmodule SolanaEx.WebsocketTest do
       method = %AccountSubscribe{pubkey: "CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12"}
       request = Request.new(WsMethods.name(method), method.pubkey, method.opts)
       msg = Request.encode!(request)
-
-      response = %{
-        "jsonrpc" => "2.0",
-        # subscription ID
-        "result" => 100,
-        "id" => request.id
-      }
+      response = subscription_response(request.id)
 
       test_pid = self()
 
@@ -132,5 +137,22 @@ defmodule SolanaEx.WebsocketTest do
         "subscription" => subscription_id
       }
     }
+  end
+
+  defp subscription_response(subscription_id) do
+    %{
+      "jsonrpc" => "2.0",
+      "result" => 100,
+      "id" => subscription_id
+    }
+  end
+
+  defp always_match, do: fn _ -> true end
+
+  defp subscription_resp_transformer do
+    fn {opcode, msg} ->
+      id = Jason.decode!(msg) |> Map.get("id")
+      {opcode, subscription_response(id) |> Jason.encode!()}
+    end
   end
 end

@@ -1,6 +1,6 @@
 defmodule SolanaEx.RPC.Request do
   @derive Jason.Encoder
-  defstruct [:id, :method, :params, :jsonrpc]
+  defstruct [:jsonrpc, :id, :method, :params]
 
   @doc """
   Creates a new JSON-RPC 2.0 request struct for Solana API calls.
