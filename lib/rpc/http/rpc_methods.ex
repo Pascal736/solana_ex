@@ -2,6 +2,7 @@ defmodule SolanaEx.RPC.HttpMethods do
   alias SolanaEx.RPC.Response
 
   def methods() do
+    # TODO: Add default opts like max_supported_transaction_version: 0.
     [
       {"get_account_info", [:pubkey], [:commitmet, :encoding, :dataslice, :min_context_slot], "getAccountInfo", Response.AccountInfo},
       {"get_balance", [:pubkey], [:commitment, :min_context_slot], "getBalance", Response.Balance},

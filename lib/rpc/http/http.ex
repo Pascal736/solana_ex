@@ -7,8 +7,8 @@ defmodule SolanaEx.RPC.Http do
     args = Enum.map(args, &Macro.var(&1, nil))
 
     def unquote(:"#{name}")(client, unquote_splicing(args), opts \\ []) do
-      opts = filter_options(opts, unquote(opts))
-      request = Request.new(unquote(rpc_method), unquote(args), opts) |> Request.encode!()
+      opts = filter_options(opts, unquote(opts)) 
+      request = Request.new(unquote(rpc_method), unquote_splicing(args), opts) |> Request.encode!()
       post(client, request) |> handle_response(unquote(response_module))
     end
 

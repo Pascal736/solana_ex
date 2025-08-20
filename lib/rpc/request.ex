@@ -79,7 +79,7 @@ defmodule SolanaEx.RPC.Request do
 
   defp create_params(argument, opts) do
     case convert_options(opts) do
-      options when map_size(options) == 0 -> nil
+      options when map_size(options) == 0 -> [argument]
       options -> [argument, options]
     end
   end
