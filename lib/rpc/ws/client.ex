@@ -19,18 +19,31 @@ defmodule SolanaEx.RPC.WsClient do
     {:ok, state}
   end
 
-  def subscribe(client, %Request{} = request, callbacks \\ []) do
+  def subscribe(%Request{} = request, callbacks) when is_list(callbacks) do
+    GenServer.call(__MODULE__, {:subscribe, request, callbacks})
+  end
+
+  def subscribe(client, %Request{} = request, callbacks \\ []) when is_list(callbacks) do
     GenServer.call(client, {:subscribe, request, callbacks})
   end
 
-  def subscribe_account(client, pubkey, opts, callbacks \\ []) do
+  def subscribe_account(pubkey, opts \\ [], callbacks \\ []) when is_list(callbacks) and is_list(opts) do
+    subscribe_account(__MODULE__, pubkey, opts, callbacks)
+  end
+
+  def subscribe_account(client, pubkey, opts, callbacks) when is_list(callbacks) and is_list(opts) do
     method = %WsMethods.AccountSubscribe{pubkey: pubkey}
     # TODO: Add proper merging of opts.
     request = Request.new("accountSubscribe", method.pubkey, method.opts)
     subscribe(client, request, callbacks)
   end
 
-  def subscribe_slot(client, callbacks \\ []) do
+  def subscribe_slot(callbacks) do
+    request = Request.new("slotSubscribe", [], [])
+    subscribe(request, callbacks)
+  end
+
+  def subscribe_slot(client, callbacks) do
     request = Request.new("slotSubscribe", [], [])
     subscribe(client, request, callbacks)
   end

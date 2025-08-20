@@ -12,7 +12,7 @@ defmodule SolanaEx.WebsocketTest do
       {:ok, client} = WsClient.start_link(url: mock.url, mame: :test1)
       WebSocketMock.reply_with(mock, always_match(), subscription_resp_transformer())
 
-      WsClient.subscribe_account(client, "CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12", [])
+      WsClient.subscribe_account(client, "CM78CPUeXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNH12", [], [])
 
       [{:text, received}] = WebSocketMock.received_messages(mock)
       decoded = Jason.decode!(received)
@@ -33,10 +33,27 @@ defmodule SolanaEx.WebsocketTest do
 
     test "sends correct RPC reqeuest for subscribeSlot method" do
       {:ok, mock} = WebSocketMock.start()
-      {:ok, client} = WsClient.start_link(url: mock.url, mame: :test1)
+      {:ok, client} = WsClient.start_link(url: mock.url)
       WebSocketMock.reply_with(mock, always_match(), subscription_resp_transformer())
 
       WsClient.subscribe_slot(client, [])
+
+      [{:text, received}] = WebSocketMock.received_messages(mock)
+      decoded = Jason.decode!(received)
+
+      assert %{
+               "jsonrpc" => "2.0",
+               "method" => "slotSubscribe",
+               "id" => _id
+             } = decoded
+    end
+
+    test "sends to correct client when not explicitely specified" do
+      {:ok, mock} = WebSocketMock.start()
+      {:ok, client} = WsClient.start_link(url: mock.url)
+      WebSocketMock.reply_with(mock, always_match(), subscription_resp_transformer())
+
+      WsClient.subscribe_slot([])
 
       [{:text, received}] = WebSocketMock.received_messages(mock)
       decoded = Jason.decode!(received)
