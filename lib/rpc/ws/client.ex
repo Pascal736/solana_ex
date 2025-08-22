@@ -13,7 +13,7 @@ defmodule SolanaEx.RPC.WsClient do
   end
 
   def init(opts) do
-    url = Keyword.get(opts, :url, @default_url)
+    url = Keyword.get(opts, :url) || Application.get_env(:solana_ex, :ws_url) || @default_url
     {:ok, pid} = WsSocket.start_link(url, WsSocket, %{parent_pid: self()})
     state = %{subscriptions: %{}, callbacks: %{}, pending_requests: %{}, socket_pid: pid}
     {:ok, state}

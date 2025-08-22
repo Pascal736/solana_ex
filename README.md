@@ -19,3 +19,7 @@ Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_do
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at <https://hexdocs.pm/solana_ex>.
 
+## Configuration Parameters
+`http_url`: URL used for connecting to the Solana RPC server. Defaults to `https://api.mainnet-beta.solana.com`.
+`ws_url`: URL used for connecting to the Solana WebSocket server. Defaults to `wss://api.mainnet-beta.solana.com`.
+
