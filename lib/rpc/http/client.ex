@@ -4,12 +4,11 @@ defmodule SolanaEx.RPC.HttpClient do
   @default_url "https://api.mainnet-beta.solana.com"
 
   def new(opts \\ []) do
-    # TODO: Make also configureable via config
-    base_url = Keyword.get(opts, :base_url, @default_url)
+    url = Keyword.get(opts, :url) || Application.get_env(:solana_ex, __MODULE__)[:url] || @default_url
     adapter = Keyword.get(opts, :adapter, Tesla.Adapter.Mint)
 
     middleware = [
-      {Tesla.Middleware.BaseUrl, base_url},
+      {Tesla.Middleware.BaseUrl, url},
       {Tesla.Middleware.Headers, [{"Content-Type", "application/json"}]},
       Tesla.Middleware.JSON
     ]
