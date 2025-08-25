@@ -48,6 +48,16 @@ defmodule SolanaEx.RPC.WsClient do
     subscribe(client, request, callbacks)
   end
 
+  def subscribe_logs(mentions, opts, callbacks) when is_list(mentions) do
+    request = Request.new("logsSubscribe", %{mentions: mentions}, opts)
+    subscribe(__MODULE__, request, callbacks)
+  end
+
+  def subscribe_logs(client, mentions, opts, callbacks) when is_list(mentions) do
+    request = Request.new("logsSubscribe", %{mentions: mentions}, opts)
+    subscribe(client, request, callbacks)
+  end
+
   # TODO: Implement
   def unsubscribe(client, request_id) do
     GenServer.call(client, {:unsubscribe, request_id})
